@@ -19,6 +19,9 @@
 #include "DataConverter/DataConverter.h"
 //里程计
 #include <nav_msgs/msg/odometry.h>
+//雷达
+#include "LidarManager/LidarManager.h"
+#include <sensor_msgs/msg/laser_scan.h>
 
 
 //声明ros2实体
@@ -32,7 +35,11 @@ rcl_subscription_t cmd_sub;
 geometry_msgs__msg__Twist msg_cmd;
 //发布者odom
 rcl_publisher_t odom_pub;
-
+//发布者scan
+sensor_msgs__msg__LaserScan * scan_msg;
+unsigned int pub_count = 0;
+unsigned long last_scan_pub_time = 0;
+rcl_publisher_t scan_pub;
 //设置loop_ping保活的超时时间
 float ping_prev_pub_time_us = 0;
 #define UROS_PING_PUB_PERIOD_US 3000000 
@@ -47,7 +54,8 @@ const unsigned long ODOM_PUB_PERIOD_MS = 40; // 40ms 对应 25Hz，33ms 对应 3
 DataConverter converter(WHEEL_SEPARATION, WHEEL_RADIUS);
 //创建电机控制实体
 Motors motors;
-
+// 创建雷达管理实例
+LidarManager lidar;
 
 // --- 错误检查宏定义 ---
 #define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){error_loop();}}
@@ -132,6 +140,9 @@ void setup()
 
     // 初始化里程计发布者
     RCCHECK(rclc_publisher_init_default(&odom_pub, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(nav_msgs, msg, Odometry), "odom"));
+    
+    // 初始化雷达数据发布者
+    RCCHECK(rclc_publisher_init_default(&scan_pub, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, LaserScan), "scan"));
 
     //初始化时间管理器
     URosTimeManager::getInstance().begin(5000);
@@ -141,6 +152,16 @@ void setup()
     motors.begin();
     Serial.println("Robot Motors Initialized...");
 
+    //雷达串口设置，物理链路加固：显式配置 GPIO 模式，排除浮空干扰，强制 RX 引脚为上拉状态，防止悬空产生随机噪声;雷达串口初始化：预留充足的稳定时间，设置缓存大小;串口大小设置需要先设置大小再启动begin
+    pinMode(16, INPUT_PULLUP); 
+    Serial2.setRxBufferSize(2048);
+    Serial2.begin(115200, SERIAL_8N1, 16, 17);
+    
+    Serial.println("\n[SYSTEM] Lidar_Serial_02_Init_OK...");
+    delay(1000); 
+    //雷达解析引擎启动
+    lidar.begin("base_scan");
+    Serial.println("\n[SYSTEM] Lidar Initialized_OK.");
 }
 
 
@@ -192,6 +213,38 @@ if (dt > 0) {
             Serial.print(" dt="); Serial.println(dt);
             */
         }
+    }
+
+//优先处理雷达串口数据，防止缓冲区溢出
+lidar.update();
+    if (lidar.isScanReady()) 
+    {
+        // static unsigned long last_scan_pub_time = 0;
+        //雷达数据发布频率控制
+        if (millis() - last_scan_pub_time >= 150) { // 限制在约 6.6Hz
+            last_scan_pub_time = millis();
+            // 填充同步后的时间戳
+            struct timespec tv;
+            clock_gettime(CLOCK_REALTIME, &tv);
+            // --- 优化点：时间同步保护逻辑 ---
+            if (tv.tv_sec < 1000000) { 
+                // 如果时间还没同步，使用 ESP32 启动以来的毫秒数模拟时间戳
+                // 这样 odom 话题会有频率，上位机能看到 TF 正在跳动
+                scan_msg->header.stamp.sec = millis() / 1000;
+                scan_msg->header.stamp.nanosec = (millis() % 1000) * 1000000;
+            } else {
+                scan_msg->header.stamp.sec = tv.tv_sec;
+                scan_msg->header.stamp.nanosec = tv.tv_nsec;
+            }
+
+            // 执行发布（受频率限制，减轻网络负担）
+            RCSOFTCHECK(rcl_publish(&scan_pub, scan_msg, NULL));
+
+            // if (rcl_publish(&scan_pub, scan_msg, NULL) == RCL_RET_OK) {
+            //     pub_count++;
+            //     }
+        }
+        lidar.resetScanReady();
     }
 //自有延迟
 delay(1);

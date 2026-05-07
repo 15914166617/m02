@@ -1,0 +1,18 @@
+#include <Arduino.h>
+#include "net/transport_manager.h"
+
+void setup() {
+    // 使用新的直观名字进行初始化
+    if (!TransportManager::init(15000)) {
+        // 如果连接失败的预警处理
+        Serial.println("System halt: Transport failed.");
+        while(1) delay(1000);
+    }
+
+    // 继续初始化 ROS 2 节点...
+}
+
+void loop() {
+    // 保持运行
+    delay(10);
+}

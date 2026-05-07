@@ -1,0 +1,24 @@
+#include "Motors.h"
+#include "DataConverter.h"
+
+Motors motors;
+DataConverter converter(0.25, 0.032); // 轮距 25cm, 半径 3.2cm
+
+void loop() {
+    // 1. 更新电机硬件状态并获取时间差
+    double dt = motors.update();
+
+    if (dt > 0) {
+        // 2. 将电机的物理速度传给融合模块
+        converter.updateOdometry(
+            motors.getLeftSpeed(), 
+            motors.getRightSpeed(), 
+            dt
+        );
+
+        // 3. 发布转换后的标准 ROS 2 消息
+        // rcl_publish(&odom_pub, &converter.getOdomMsg(), NULL);
+    }
+    
+    delay(20); // 保持稳定的 50Hz 更新频率
+}

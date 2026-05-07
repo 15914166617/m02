@@ -1,0 +1,142 @@
+// #include <Arduino.h>
+
+// #include <micro_ros_platformio.h>
+
+// #include <rcl/rcl.h>
+// #include <rclc/rclc.h>
+// #include <rclc/executor.h>
+// #include <std_msgs/msg/int32.h>
+
+// #include <sensor_msgs/msg/imu.h> // 假设你使用 IMU 传感器
+
+// // 包含我们刚才创建的时间管理类
+// #include "URosTimeManager/URosTimeManager.h"
+// #include "fusion/FusionModuleUp.h"
+// #include "Motors/Motors.h"
+// #include "transport_manager/transport_manager.h"
+// #include "LidarManager/LidarManager.h"
+// #include <sensor_msgs/msg/laser_scan.h>
+
+
+// // --- 错误检查宏定义 ---
+// #define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){error_loop();}}
+// #define RCSOFTCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){}}
+// // 错误处理函数：如果初始化失败，LED快闪并停止运行
+// void error_loop() {
+//     while(1) {
+//         digitalWrite(2, !digitalRead(2)); // 假设板载LED在引脚2
+//         delay(100);
+//     }
+// }
+
+
+// Motors myRobot;
+
+// LidarManager lidar;
+// unsigned long last_diag_time = 0;
+// int pub_count = 0;
+// sensor_msgs__msg__LaserScan * scan_msg;
+
+// // ROS 2 实体声明
+// rcl_publisher_t publisher;
+// sensor_msgs__msg__Imu msg;
+// rclc_executor_t executor;
+// rclc_support_t support;
+// rcl_allocator_t allocator;
+// rcl_node_t node;
+// void setup()
+// {
+//     // --- 核心步骤：启动时间同步管理器 ---
+//     // 建议在成功连接并初始化节点后再启动
+//     // 设置每 60 秒（60000ms）在后台自动与上位机校准一次时间
+//     // URosTimeManager::getInstance().begin(60000); 
+//     // Serial.println("System Initialized, Time Sync Task Started in Background.");
+    
+
+//     // 初始化电机控制器（配置引脚、创建对象、启动PID）
+//     // myRobot.begin();
+//     // 设置初始目标速度 (m/s)
+//     // 例如：左轮 0.15 m/s, 右轮 0.15 m/s (直线前进)
+//     // myRobot.setTargetSpeeds(0.15, 0.15);
+//     // Serial.println("Robot Motors Initialized...");
+
+//     // 1. 建立基础诊断链路
+//     Serial.begin(115200);
+//     delay(1000);
+//     Serial.println("\n[SYSTEM] Initiating Robust Serial Handshake...");
+
+//     // 2. 物理链路加固：显式配置 GPIO 模式，排除浮空干扰
+//     pinMode(16, INPUT_PULLUP); // 强制 RX 引脚为上拉状态，防止悬空产生随机噪声
+    
+//     // 3. 硬件串口初始化：预留充足的稳定时间
+//     Serial2.begin(115200, SERIAL_8N1, 16, 17);
+//     Serial2.setRxBufferSize(2048);
+//     delay(1000); 
+
+//     // 4. 解析引擎启动
+//     lidar.begin("laser_frame");
+
+//     // 5. micro-ROS 启动（在串口稳定后介入）
+//     //初始化wifi agent
+//     if (!TransportManager::init(15000)) {
+//         // 如果连接失败的预警处理
+//         Serial.println("System halt: Transport failed.");
+//         while(1) delay(1000);
+//     }
+    
+//     allocator = rcl_get_default_allocator();
+//     RCCHECK(rclc_support_init(&support, 0, NULL, &allocator));
+//     RCCHECK(rclc_node_init_default(&node, "ydlidar_autonomous_node", "", &support));
+//     RCCHECK(rclc_publisher_init_default(
+//         &publisher, &node,
+//         ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, LaserScan), "scan"));
+
+//     scan_msg = lidar.getLaserScanMsg();
+//     RCCHECK(rclc_executor_init(&executor, &support.context, 1, &allocator));
+    
+//     Serial.println("[SYSTEM] Integration synchronized. Monitoring Operational Health.");
+
+//     URosTimeManager::getInstance().begin(60000); 
+//     Serial.println("System Initialized, Time Sync Task Started in Background.");
+// }
+
+// void loop()
+// {
+//  lidar.update();
+
+//     if (lidar.isScanReady()) {
+//         struct timespec tv;
+//         clock_gettime(CLOCK_REALTIME, &tv);
+//         scan_msg->header.stamp.sec = tv.tv_sec;
+//         scan_msg->header.stamp.nanosec = tv.tv_nsec;
+
+//         if (rcl_publish(&publisher, scan_msg, NULL) == RCL_RET_OK) {
+//             pub_count++;
+//         }
+//         lidar.resetScanReady();
+//     }
+
+//     // 执行高频健康审计诊断
+//     if (millis() - last_diag_time > 1000) {
+//         uint32_t errors = lidar.getCorruptedCount();
+//         uint32_t total = lidar.getTotalProcessed();
+//         float health_score = (total > 0) ? (1.0f - (float)errors/total) * 100.0f : 0.0f;
+        
+//         if (total > 0) {
+//             Serial.printf("[HEALTH] Reliability: %.1f%% | Rate: %d Hz | Errors: %u/%u\n", 
+//                           health_score, pub_count, errors, total);
+            
+//             if (health_score < 90.0f) {
+//                 Serial.println("[WARNING] Data Integrity Suboptimal. Investigate signal noise.");
+//             }
+//         } else {
+//             int rx_level = digitalRead(16);
+//             Serial.printf("[IDLE] Link inactive. RX(16) Static Level: %s\n", rx_level ? "HIGH" : "LOW");
+//         }
+        
+//         pub_count = 0;
+//         last_diag_time = millis();
+//     }
+
+//     rclc_executor_spin_some(&executor, RCL_MS_TO_NS(1));
+// }

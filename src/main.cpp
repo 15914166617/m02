@@ -15,6 +15,10 @@
 #include <geometry_msgs/msg/twist.h>
 //motor
 #include "Motors/Motors.h"
+//数据融合odom
+#include "DataConverter/DataConverter.h"
+//里程计
+#include <nav_msgs/msg/odometry.h>
 
 
 //声明ros2实体
@@ -26,14 +30,20 @@ rcl_node_t node;
 //订阅者
 rcl_subscription_t cmd_sub;
 geometry_msgs__msg__Twist msg_cmd;
+//发布者odom
+rcl_publisher_t odom_pub;
 
-
-//设置loop_ping的超时时间
+//设置loop_ping保活的超时时间
 float ping_prev_pub_time_us = 0;
 #define UROS_PING_PUB_PERIOD_US 3000000 
 //设置硬件与运动学参数(在订阅的cmdvel和里程计融合有用到)
 const float WHEEL_SEPARATION = 0.174; // 轮距 (m)
 const float WHEEL_RADIUS = 0.0325;    // 轮半径 (m)
+//里程计pub发送的计时
+unsigned long last_odom_pub_time = 0;
+const unsigned long ODOM_PUB_PERIOD_MS = 40; // 40ms 对应 25Hz，33ms 对应 30Hz
+
+//数据融合实体
 DataConverter converter(WHEEL_SEPARATION, WHEEL_RADIUS);
 //创建电机控制实体
 Motors motors;
@@ -115,6 +125,13 @@ void setup()
 
     // 初始化速度指令订阅者
     RCCHECK(rclc_subscription_init_default(&cmd_sub, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, Twist), "cmd_vel"));
+    // 为订阅者配置执行器和回调函数：单线程异步处理订阅回调
+    executor = rclc_executor_get_zero_initialized_executor();
+    RCCHECK(rclc_executor_init(&executor, &support.context, 1, &allocator));
+    RCCHECK(rclc_executor_add_subscription(&executor, &cmd_sub, &msg_cmd, &cmd_vel_callback, ON_NEW_DATA));
+
+    // 初始化里程计发布者
+    RCCHECK(rclc_publisher_init_default(&odom_pub, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(nav_msgs, msg, Odometry), "odom"));
 
     //初始化时间管理器
     URosTimeManager::getInstance().begin(5000);
@@ -141,7 +158,41 @@ rclc_executor_spin_some(&executor, RCL_MS_TO_NS(1));
 
 //更新电机反馈（高频运行，确保 PID 控制精度），返回的dt时间，用于在计算了有效增量时进入odom的计算
 double dt = motors.update();
-    
+
+//Odom:出现有效增量,更新里程计内部位姿计算（必须每次都算，保证物理位置不丢失）    
+if (dt > 0) {
+        // 更新里程计内部位姿计算（必须每次都算，保证物理位置不丢失）
+        converter.updateOdometry(motors.getLeftSpeed(), motors.getRightSpeed(), (float)dt);
+
+        //话题发布频率控制:Odom
+        unsigned long now = millis();
+        if (now - last_odom_pub_time >= ODOM_PUB_PERIOD_MS) {
+            last_odom_pub_time = now;
+            // 获取待发布的里程计消息
+            nav_msgs__msg__Odometry &odom = converter.getOdomMsg();
+            // 填充同步后的时间戳
+            struct timespec ns;
+            clock_gettime(CLOCK_REALTIME, &ns);
+            // --- 优化点：时间同步保护逻辑 ---
+            if (ns.tv_sec < 1000000) { 
+                // 如果时间还没同步，使用 ESP32 启动以来的毫秒数模拟时间戳
+                // 这样 odom 话题会有频率，上位机能看到 TF 正在跳动
+                odom.header.stamp.sec = millis() / 1000;
+                odom.header.stamp.nanosec = (millis() % 1000) * 1000000;
+            } else {
+                odom.header.stamp.sec = ns.tv_sec;
+                odom.header.stamp.nanosec = ns.tv_nsec;
+            }
+            // 执行发布（受频率限制，减轻网络负担）
+            RCSOFTCHECK(rcl_publish(&odom_pub, &odom, NULL));
+            // 可选：仅在发布时打印，避免串口过载
+            /*
+            Serial.print("L="); Serial.print(motors.getLeftSpeed());
+            Serial.print(" R="); Serial.print(motors.getRightSpeed());
+            Serial.print(" dt="); Serial.println(dt);
+            */
+        }
+    }
 //自有延迟
 delay(1);
 }

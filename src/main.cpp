@@ -10,6 +10,27 @@
 //WiFi
 #include "transport_manager/transport_manager.h"
 #include "URosTimeManager/URosTimeManager.h"
+#include <geometry_msgs/msg/twist.h>
+
+
+//声明ros2实体
+rclc_executor_t executor;
+rclc_support_t support;
+rcl_allocator_t allocator;
+rcl_node_t node;
+
+//订阅者
+rcl_subscription_t cmd_sub;
+geometry_msgs__msg__Twist msg_cmd;
+
+
+//设置loop_ping的超时时间
+float ping_prev_pub_time_us = 0;
+#define UROS_PING_PUB_PERIOD_US 3000000 
+//设置硬件与运动学参数
+const float WHEEL_SEPARATION = 0.174; // 轮距 (m)
+const float WHEEL_RADIUS = 0.0325;    // 轮半径 (m)
+DataConverter converter(WHEEL_SEPARATION, WHEEL_RADIUS);
 
 
 // --- 错误检查宏定义 ---
@@ -22,13 +43,45 @@ void error_loop() {
         delay(100);
     }
 }
+//订阅回调函数，接受下发的线速度和角速度，变成左右轮子的pid目标速度
+void cmd_vel_callback(const void * msin) {
+    const geometry_msgs__msg__Twist * msg = (const geometry_msgs__msg__Twist *)msin;
+    float v = msg->linear.x;
+    float w = msg->angular.z;
+    float left = v - (w * WHEEL_SEPARATION / 2.0f);
+    float right = v + (w * WHEEL_SEPARATION / 2.0f);
+    motors.setTargetSpeeds(left, right);
+}
 
+//保活函数
+void loop_ping() {
+    static int retry_count = 0; 
+    const int MAX_RETRIES = 15;  // 设置为 15 次（约 45 秒），给上位机充足的启动时间
+    
+    unsigned long time_now_us = esp_timer_get_time();
+    
+    if (time_now_us - ping_prev_pub_time_us >= UROS_PING_PUB_PERIOD_US) { 
+        ping_prev_pub_time_us = time_now_us;
+        
+        if (rmw_uros_ping_agent(100, 1) == RCL_RET_OK) {
+            if(retry_count > 0) Serial.println("[SYSTEM] Connection active.");
+            retry_count = 0;
+        } else {
+            retry_count++;
+            // 日志频率，每 3 次失败才打印一次串口输出
+            if (retry_count % 3 == 0) {
+                Serial.printf("[WARN] Agent not responding (%d/%d)\n", retry_count, MAX_RETRIES);
+            }
+            
+            if (retry_count >= MAX_RETRIES) {
+                Serial.println("[ERROR] Connection lost for too long. Rebooting...");
+                delay(500);
+                ESP.restart(); 
+            }
+        }
+    }
+}
 
-//声明ros2实体
-rclc_executor_t executor;
-rclc_support_t support;
-rcl_allocator_t allocator;
-rcl_node_t node;
 
 void setup()
 {
@@ -54,6 +107,9 @@ void setup()
     RCCHECK(rclc_support_init(&support, 0, NULL, &allocator));
     RCCHECK(rclc_node_init_default(&node, "m02_node", "", &support));
 
+    // 初始化速度指令订阅者
+    RCCHECK(rclc_subscription_init_default(&cmd_sub, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, Twist), "cmd_vel"));
+
     //初始化时间管理器
     URosTimeManager::getInstance().begin(5000);
     Serial.println("System Initialized, Time is begin.");
@@ -69,5 +125,13 @@ void loop()
 //时间管理器轮询 (间隔由step中begin函数设置)
 URosTimeManager::getInstance().update();
 
+//保活心跳
+loop_ping();
+
+//释放时间给订阅处理订阅回调
+rclc_executor_spin_some(&executor, RCL_MS_TO_NS(1));
+
+
+//自有延迟
 delay(1);
 }

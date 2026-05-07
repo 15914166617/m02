@@ -1,0 +1,62 @@
+#include <Arduino.h>
+#include "drivers/Motors.h"
+
+// 创建电机控制实例
+Motors myRobot;
+
+void setup() {
+    // 初始化串口，波特率需与微控制器匹配
+    Serial.begin(115200);
+    delay(1000); // 等待串口稳定
+
+    // 初始化电机控制器（配置引脚、创建对象、启动PID）
+    myRobot.begin();
+
+    // 设置初始目标速度 (m/s)
+    // 例如：左轮 0.15 m/s, 右轮 0.15 m/s (直线前进)
+    myRobot.setTargetSpeeds(0.15, 0.15);
+
+    Serial.println("Robot Motors Initialized...");
+}
+
+void loop() {
+    /**
+     * 重要：必须在 loop 中不断调用 update()。
+     * 该函数内部包含了：
+     * 1. 编码器脉冲读取
+     * 2. 物理速度转换 (m/s)
+     * 3. 历史记录缓冲区存入 (带 ROS 时间戳)
+     * 4. PID 闭环计算与 PWM 输出
+     */
+    myRobot.update();
+
+    // 定时打印当前速度数据 (建议不要每圈都打，以免阻塞串口)
+    static unsigned long lastPrint = 0;
+    if (millis() - lastPrint >= 500) { // 每 500ms 打印一次
+        lastPrint = millis();
+
+        // 1. 获取当前即时速度
+        double vL = myRobot.getLeftSpeed();
+        double vR = myRobot.getRightSpeed();
+
+        // 2. 获取缓冲区中最新的带时间戳的数据 (index 0 是最新的)
+        TimestampedVelocity latestL = myRobot.getHistoricalVelocity(Motors::LEFT_WHEEL_ID, 0);
+        TimestampedVelocity latestR = myRobot.getHistoricalVelocity(Motors::RIGHT_WHEEL_ID, 0);
+
+        // --- 串口输出 ---
+        Serial.println("----------------------------------------");
+        Serial.printf("[Real-time] Left: %.3f m/s | Right: %.3f m/s\n", vL, vR);
+        
+        // 输出带时间戳的同步信息（用于确认 ROS 时间戳是否正常挂载）
+        Serial.printf("[History 0] L_Time: %ld.%09ld | L_Vel: %.3f\n", 
+                      latestL.timestamp.sec, latestL.timestamp.nanosec, latestL.velocity);
+        Serial.printf("[History 0] R_Time: %ld.%09ld | R_Vel: %.3f\n", 
+                      latestR.timestamp.sec, latestR.timestamp.nanosec, latestR.velocity);
+        
+        // 动态调整演示：如果运行 10 秒后停止
+        if (millis() > 10000 && millis() < 10500) {
+            myRobot.setTargetSpeeds(0, 0);
+            Serial.println("Target reached, stopping motors.");
+        }
+    }
+}

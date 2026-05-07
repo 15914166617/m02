@@ -9,8 +9,12 @@
 
 //WiFi
 #include "transport_manager/transport_manager.h"
+//时间
 #include "URosTimeManager/URosTimeManager.h"
+//cmdvel
 #include <geometry_msgs/msg/twist.h>
+//motor
+#include "Motors/Motors.h"
 
 
 //声明ros2实体
@@ -27,10 +31,12 @@ geometry_msgs__msg__Twist msg_cmd;
 //设置loop_ping的超时时间
 float ping_prev_pub_time_us = 0;
 #define UROS_PING_PUB_PERIOD_US 3000000 
-//设置硬件与运动学参数
+//设置硬件与运动学参数(在订阅的cmdvel和里程计融合有用到)
 const float WHEEL_SEPARATION = 0.174; // 轮距 (m)
 const float WHEEL_RADIUS = 0.0325;    // 轮半径 (m)
 DataConverter converter(WHEEL_SEPARATION, WHEEL_RADIUS);
+//创建电机控制实体
+Motors motors;
 
 
 // --- 错误检查宏定义 ---
@@ -114,7 +120,9 @@ void setup()
     URosTimeManager::getInstance().begin(5000);
     Serial.println("System Initialized, Time is begin.");
 
-
+    //初始化电机控制器（配置引脚、创建对象、启动PID）
+    motors.begin();
+    Serial.println("Robot Motors Initialized...");
 
 }
 
@@ -131,7 +139,9 @@ loop_ping();
 //释放时间给订阅处理订阅回调
 rclc_executor_spin_some(&executor, RCL_MS_TO_NS(1));
 
-
+//更新电机反馈（高频运行，确保 PID 控制精度），返回的dt时间，用于在计算了有效增量时进入odom的计算
+double dt = motors.update();
+    
 //自有延迟
 delay(1);
 }

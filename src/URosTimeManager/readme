@@ -1,0 +1,86 @@
+#include <Arduino.h>
+#include <micro_ros_platformio.h>
+
+#include <rcl/rcl.h>
+#include <rclc/rclc.h>
+#include <rclc/executor.h>
+#include <sensor_msgs/msg/imu.h>
+
+// 包含时间管理类
+#include "URosTimeManager.h"
+
+// --- 错误检查宏定义 ---
+#define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){error_loop();}}
+#define RCSOFTCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){}}
+
+// 错误处理函数：如果初始化失败，LED快闪并停止运行
+void error_loop() {
+    while(1) {
+        digitalWrite(2, !digitalRead(2)); // 假设板载LED在引脚2
+        delay(100);
+    }
+}
+
+// ROS 2 实体声明
+rcl_publisher_t publisher;
+sensor_msgs__msg__Imu msg;
+rclc_support_t support;
+rcl_allocator_t allocator;
+rcl_node_t node;
+
+void setup() {
+    // 基础硬件初始化
+    Serial.begin(115200);
+    pinMode(2, OUTPUT);
+    
+    // 1. 设置 micro-ROS 传输层
+    set_microros_serial_transports(Serial);
+    delay(2000);
+
+    allocator = rcl_get_default_allocator();
+
+    // 2. 初始化支持及节点 (使用 RCCHECK 检查返回值)
+    RCCHECK(rclc_support_init(&support, 0, NULL, &allocator));
+    RCCHECK(rclc_node_init_default(&node, "esp32_time_sync_node", "", &support));
+
+    // 3. 初始化发布者
+    RCCHECK(rclc_publisher_init_default(
+        &publisher,
+        &node,
+        ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, Imu),
+        "imu_data"
+    ));
+
+    // --- 核心步骤：启动时间同步管理器 ---
+    // 设置每 60 秒在后台自动与上位机校准一次时间
+    URosTimeManager::getInstance().begin(60000); 
+
+    Serial.println("System Initialized, Time Sync Task Started.");
+}
+
+void loop() {
+    // 4. 获取同步后的 ROS 2 时间戳
+    msg.header.stamp = URosTimeManager::getInstance().getRosTime();
+    
+    // 5. 设置坐标系
+    static char frame_name[] = "imu_link";
+    msg.header.frame_id.data = frame_name;
+    msg.header.frame_id.size = strlen(frame_name);
+
+    // 6. 填充模拟数据
+    msg.linear_acceleration.z = 9.81;
+
+    // 7. 发布数据
+    RCSOFTCHECK(rcl_publish(&publisher, &msg, NULL));
+
+    //8使用串口发布当前时间ros
+    builtin_interfaces__msg__Time now = URosTimeManager::getInstance().getRosTime();
+    Serial.printf("Current ROS Time: %ld.%09ld\n", now.sec, now.nanosec);
+
+    delay(100); 
+}
+
+
+//串口查看 时间
+builtin_interfaces__msg__Time now = URosTimeManager::getInstance().getRosTime();
+Serial.printf("Current ROS Time: %ld.%09ld\n", now.sec, now.nanosec);

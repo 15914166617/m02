@@ -36,8 +36,6 @@ geometry_msgs__msg__Twist msg_cmd;
 //发布者odom
 rcl_publisher_t odom_pub;
 //发布者scan
-sensor_msgs__msg__LaserScan * scan_msg;
-unsigned int pub_count = 0;
 unsigned long last_scan_pub_time = 0;
 rcl_publisher_t scan_pub;
 //设置loop_ping保活的超时时间
@@ -163,10 +161,6 @@ void setup()
     motors.begin();
     Serial.println("Robot Motors Initialized...");
 
-
-    // 6.获取激光扫描消息123123
-    scan_msg = lidar.getLaserScanMsg();
-    Serial.println("[SYSTEM] Lidar Initialized_OK.");
 }
 
 
@@ -231,23 +225,21 @@ lidar.update();
             // 填充同步后的时间戳
             struct timespec tv;
             clock_gettime(CLOCK_REALTIME, &tv);
+            sensor_msgs__msg__LaserScan  &scan_msg = lidar.getLaserScanMsg();
             // --- 优化点：时间同步保护逻辑 ---
             if (tv.tv_sec < 1000000) { 
                 // 如果时间还没同步，使用 ESP32 启动以来的毫秒数模拟时间戳
                 // 这样 odom 话题会有频率，上位机能看到 TF 正在跳动
-                scan_msg->header.stamp.sec = millis() / 1000;
-                scan_msg->header.stamp.nanosec = (millis() % 1000) * 1000000;
+                scan_msg.header.stamp.sec = millis() / 1000;
+                scan_msg.header.stamp.nanosec = (millis() % 1000) * 1000000;
             } else {
-                scan_msg->header.stamp.sec = tv.tv_sec;
-                scan_msg->header.stamp.nanosec = tv.tv_nsec;
+                scan_msg.header.stamp.sec = tv.tv_sec;
+                scan_msg.header.stamp.nanosec = tv.tv_nsec;
             }
 
             // 执行发布（受频率限制，减轻网络负担）
-            RCSOFTCHECK(rcl_publish(&scan_pub, scan_msg, NULL));
+            RCSOFTCHECK(rcl_publish(&scan_pub, &scan_msg, NULL));
 
-            // if (rcl_publish(&scan_pub, scan_msg, NULL) == RCL_RET_OK) {
-            //     pub_count++;
-            //     }
         }
         lidar.resetScanReady();
     }

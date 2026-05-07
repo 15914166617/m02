@@ -19,7 +19,7 @@ public:
     // 异步数据流迭代
     void update();
 
-    sensor_msgs__msg__LaserScan* getLaserScanMsg() { return &scan_msg; }
+    sensor_msgs__msg__LaserScan& getLaserScanMsg() { return scan_msg; }
 
     bool isScanReady() { return scan_ready; }
     void resetScanReady() { scan_ready = false; }

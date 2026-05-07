@@ -114,6 +114,16 @@ void setup()
     delay(2000);
     Serial.println("\n[SYSTEM] Serial_01_Init_OK...");
 
+    //雷达串口设置，物理链路加固：显式配置 GPIO 模式，排除浮空干扰，强制 RX 引脚为上拉状态，防止悬空产生随机噪声;雷达串口初始化：预留充足的稳定时间，设置缓存大小;串口大小设置需要先设置大小再启动begin
+    pinMode(16, INPUT_PULLUP); 
+    Serial2.setRxBufferSize(2048);
+    Serial2.begin(115200, SERIAL_8N1, 16, 17);
+    
+    Serial.println("\n[SYSTEM] Lidar_Serial_02_Init_OK...");
+    delay(1000); 
+    //雷达解析引擎启动
+    lidar.begin("base_scan");
+    Serial.println("\n[SYSTEM] Lidar Initialized_OK.");
 
     //设置并且连接WIFI
     WiFi.setSleep(false);//wifi设置为不休眠不降低频率
@@ -133,16 +143,17 @@ void setup()
 
     // 初始化速度指令订阅者
     RCCHECK(rclc_subscription_init_default(&cmd_sub, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, Twist), "cmd_vel"));
-    // 为订阅者配置执行器和回调函数：单线程异步处理订阅回调
-    executor = rclc_executor_get_zero_initialized_executor();
-    RCCHECK(rclc_executor_init(&executor, &support.context, 1, &allocator));
-    RCCHECK(rclc_executor_add_subscription(&executor, &cmd_sub, &msg_cmd, &cmd_vel_callback, ON_NEW_DATA));
 
     // 初始化里程计发布者
     RCCHECK(rclc_publisher_init_default(&odom_pub, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(nav_msgs, msg, Odometry), "odom"));
     
     // 初始化雷达数据发布者
     RCCHECK(rclc_publisher_init_default(&scan_pub, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, LaserScan), "scan"));
+
+    // 为订阅者配置执行器和回调函数：单线程异步处理订阅回调
+    executor = rclc_executor_get_zero_initialized_executor();
+    RCCHECK(rclc_executor_init(&executor, &support.context, 1, &allocator));
+    RCCHECK(rclc_executor_add_subscription(&executor, &cmd_sub, &msg_cmd, &cmd_vel_callback, ON_NEW_DATA));
 
     //初始化时间管理器
     URosTimeManager::getInstance().begin(5000);
@@ -152,16 +163,10 @@ void setup()
     motors.begin();
     Serial.println("Robot Motors Initialized...");
 
-    //雷达串口设置，物理链路加固：显式配置 GPIO 模式，排除浮空干扰，强制 RX 引脚为上拉状态，防止悬空产生随机噪声;雷达串口初始化：预留充足的稳定时间，设置缓存大小;串口大小设置需要先设置大小再启动begin
-    pinMode(16, INPUT_PULLUP); 
-    Serial2.setRxBufferSize(2048);
-    Serial2.begin(115200, SERIAL_8N1, 16, 17);
-    
-    Serial.println("\n[SYSTEM] Lidar_Serial_02_Init_OK...");
-    delay(1000); 
-    //雷达解析引擎启动
-    lidar.begin("base_scan");
-    Serial.println("\n[SYSTEM] Lidar Initialized_OK.");
+
+    // 6.获取激光扫描消息123123
+    scan_msg = lidar.getLaserScanMsg();
+    Serial.println("[SYSTEM] Lidar Initialized_OK.");
 }
 
 

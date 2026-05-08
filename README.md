@@ -20,7 +20,7 @@ ros2 launch kaiaai_bringup b6.launch.py robot_model:=makerspet_loki slam:=True
 ros2 launch kaiaai_bringup b6.launch.py robot_model:=makerspet_loki map:=$HOME/map.yaml slam:=False
 
 日记
-1.0     目前基础结构优化已经完成
+1.0     结构重构完成
 1.1     需要把必要的可设置参数拎出来
 
 

@@ -162,6 +162,7 @@ void setup()
 
     //初始化时间管理器
     URosTimeManager::getInstance().begin(5000);
+    URosTimeManager::getInstance().syncNow();
     Serial.println("System Initialized, Time is begin.");
 
     //初始化电机控制器（配置引脚、创建对象、启动PID）

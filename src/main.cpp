@@ -55,6 +55,13 @@ Motors motors;
 // 创建雷达管理实例
 LidarManager lidar;
 
+//wifi 帐号 密码 运行agent的机器的ip 端口8888 连接超时ms
+const char* TransportManager::SSID       = "zrc";
+const char* TransportManager::PASSWORD   = "z15914166617";
+const char* TransportManager::AGENT_IP   = "192.168.0.103";
+const uint16_t TransportManager::AGENT_PORT = 8888;
+const uint32_t TransportManager::TIMEOUT_MS = 10000;
+
 // --- 错误检查宏定义 ---
 #define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){error_loop();}}
 #define RCSOFTCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){}}
@@ -126,7 +133,7 @@ void setup()
     //设置并且连接WIFI
     WiFi.setSleep(false);//wifi设置为不休眠不降低频率
     //设置wifi的帐号密码地址端口，超时时间                                    （needadd）
-    if (!TransportManager::init(15000)) {
+    if (!TransportManager::init()) {
         // 如果连接失败的预警处理
         Serial.println("System halt: Transport failed.");
         while(1) delay(1000);

@@ -54,7 +54,10 @@ const unsigned long ODOM_PUB_PERIOD_MS = 40; // 40ms 对应 25Hz，33ms 对应 3
 //数据融合实体
 DataConverter converter(WHEEL_SEPARATION, WHEEL_RADIUS);
 //创建电机控制实体
-Motors motors;
+// Motors motors;
+const double Motors::TICKS_PER_METER= 6542.0; 
+const uint8_t Motors::L_ENC_A= 35, Motors::L_ENC_B = 32, Motors::L_IN1 = 26, Motors::L_IN2 = 27; // 左轮引脚
+const uint8_t Motors::R_ENC_A = 34, Motors::R_ENC_B = 39, Motors::R_IN1 = 25, Motors::R_IN2 = 33; // 右轮引脚
 // 创建雷达管理实例
 LidarManager lidar;
 
@@ -82,7 +85,8 @@ void cmd_vel_callback(const void * msin) {
     float w = msg->angular.z;
     float left = v - (w * WHEEL_SEPARATION / 2.0f);
     float right = v + (w * WHEEL_SEPARATION / 2.0f);
-    motors.setTargetSpeeds(left, right);
+    // motors.setTargetSpeeds(left, right);
+    Motors::getInstance().setTargetSpeeds(left, right);
 }
 
 //保活函数
@@ -175,7 +179,8 @@ void setup()
     
 
     //初始化电机控制器（配置引脚、创建对象、启动PID）
-    motors.begin();
+    // motors.begin();
+    Motors::getInstance().begin();
     Serial.println("Robot Motors Initialized...");
     Serial.println("[SYSTEM] All Initialized OK.");
     Serial.println("\n[SYSTEM] Setup finished. Starting main loop...");
@@ -196,12 +201,13 @@ loop_ping();
 rclc_executor_spin_some(&executor, RCL_MS_TO_NS(1));
 
 //更新电机反馈（高频运行，确保 PID 控制精度），返回的dt时间，用于在计算了有效增量时进入odom的计算
-double dt = motors.update();
+// double dt = motors.update();
+double dt = Motors::getInstance().update();
 
 //Odom:出现有效增量,更新里程计内部位姿计算（必须每次都算，保证物理位置不丢失）    
 if (dt > 0) {
         // 更新里程计内部位姿计算（必须每次都算，保证物理位置不丢失）
-        converter.updateOdometry(motors.getLeftSpeed(), motors.getRightSpeed(), (float)dt);
+        converter.updateOdometry(Motors::getInstance().getLeftSpeed(), Motors::getInstance().getRightSpeed(), (float)dt);
 
         //话题发布频率控制:Odom
         unsigned long now = millis();

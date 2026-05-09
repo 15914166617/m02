@@ -11,7 +11,7 @@ Motors();
 void begin();
 
 /**
- * @brief 更新电机状态：读取编码器、计算 PID 并输出 PWM
+ * @brief 更新电机状态：读取编码器、计算 PID 并输出 PWMssss
  * @return 返回本次更新的时间跨度 dt (s)
  */
 double update();

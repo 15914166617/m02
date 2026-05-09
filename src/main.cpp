@@ -40,7 +40,10 @@ unsigned long last_scan_pub_time = 0;
 rcl_publisher_t scan_pub;
 //设置loop_ping保活的超时时间
 float ping_prev_pub_time_us = 0;
-#define UROS_PING_PUB_PERIOD_US 3000000 
+// 推荐：1秒 (1,000,000微秒) 
+#define UROS_PING_PUB_PERIOD_US (2000 * 1000)//2s
+const int MAX_RETRIES = 9;  // 设置为 8 次（约 2*8=16 秒）
+
 //设置硬件与运动学参数(在订阅的cmdvel和里程计融合有用到)
 const float WHEEL_SEPARATION = 0.174; // 轮距 (m)
 const float WHEEL_RADIUS = 0.0325;    // 轮半径 (m)
@@ -85,7 +88,7 @@ void cmd_vel_callback(const void * msin) {
 //保活函数
 void loop_ping() {
     static int retry_count = 0; 
-    const int MAX_RETRIES = 15;  // 设置为 15 次（约 45 秒），给上位机充足的启动时间
+    // const int MAX_RETRIES = 15;  // 设置为 15 次（约 45 秒），给上位机充足的启动时间
     
     unsigned long time_now_us = esp_timer_get_time();
     
@@ -140,7 +143,7 @@ void setup()
     }
     Serial.println("\n[SYSTEM] Wifi_Init_OK...");
 
-
+    Serial.println("[SYSTEM] ROS2_Init_Start...");
     //初始化ros2功能
     allocator = rcl_get_default_allocator();
     RCCHECK(rclc_support_init(&support, 0, NULL, &allocator));
@@ -148,27 +151,35 @@ void setup()
 
     // 初始化速度指令订阅者
     RCCHECK(rclc_subscription_init_default(&cmd_sub, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, Twist), "cmd_vel"));
+    Serial.println("[SYSTEM] ROS2_cmd_vel_sub_Init_OK...");
 
     // 初始化里程计发布者
     RCCHECK(rclc_publisher_init_default(&odom_pub, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(nav_msgs, msg, Odometry), "odom"));
-    
+    Serial.println("[SYSTEM] ROS2_odom_pub_Init_OK...");
+
     // 初始化雷达数据发布者
     RCCHECK(rclc_publisher_init_default(&scan_pub, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, LaserScan), "scan"));
+    Serial.println("[SYSTEM] ROS2_scan_pub_Init_OK...");
 
     // 为订阅者配置执行器和回调函数：单线程异步处理订阅回调
     executor = rclc_executor_get_zero_initialized_executor();
     RCCHECK(rclc_executor_init(&executor, &support.context, 1, &allocator));
     RCCHECK(rclc_executor_add_subscription(&executor, &cmd_sub, &msg_cmd, &cmd_vel_callback, ON_NEW_DATA));
+    Serial.println("[SYSTEM] ROS2_executor_Init_OK...");
 
     //初始化时间管理器
     URosTimeManager::getInstance().begin(5000);
+    Serial.println("[SYSTEM] System Initialized, Time is begin.");
     URosTimeManager::getInstance().syncNow();
-    Serial.println("System Initialized, Time is begin.");
+    Serial.println("[SYSTEM] ROS2_Time_Sync_OK...");
+    
 
     //初始化电机控制器（配置引脚、创建对象、启动PID）
     motors.begin();
     Serial.println("Robot Motors Initialized...");
-
+    Serial.println("[SYSTEM] All Initialized OK.");
+    Serial.println("\n[SYSTEM] Setup finished. Starting main loop...");
+    Serial.println("------------------------------------------------");
 }
 
 

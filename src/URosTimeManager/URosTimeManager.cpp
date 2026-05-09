@@ -1,6 +1,6 @@
 #include "URosTimeManager.h"
 #include <Arduino.h>
-
+//需要阅读配置  启动  单次 更新函数
 void URosTimeManager::begin(uint32_t period_ms) {
     sync_period_ms_ = period_ms;
     last_sync_ms_ = millis(); 

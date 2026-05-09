@@ -44,13 +44,14 @@ float ping_prev_pub_time_us = 0;
 #define UROS_PING_PUB_PERIOD_US (2000 * 1000)//2s
 const int MAX_RETRIES = 9;  // 设置为 8 次（约 2*8=16 秒）
 
-//设置硬件与运动学参数(在订阅的cmdvel和里程计融合有用到)
-const float WHEEL_SEPARATION = 0.174; // 轮距 (m)
-const float WHEEL_RADIUS = 0.0325;    // 轮半径 (m)
+
 //里程计pub发送的计时
 unsigned long last_odom_pub_time = 0;
 const unsigned long ODOM_PUB_PERIOD_MS = 40; // 40ms 对应 25Hz，33ms 对应 30Hz
 
+//设置硬件与运动学参数(在订阅的cmdvel和里程计融合有用到)
+const float WHEEL_SEPARATION = 0.174; // 轮距 (m)
+const float WHEEL_RADIUS = 0.0325;    // 轮半径 (m)
 //数据融合实体
 DataConverter converter(WHEEL_SEPARATION, WHEEL_RADIUS);
 //创建电机控制实体

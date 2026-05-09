@@ -25,33 +25,6 @@ void DataConverter::initMessages() {
     // scan_msg_.header.frame_id.size = strlen(scan_msg_.header.frame_id.data);
 }
 
-// void DataConverter::updateOdometry(float left_vel, float right_vel, float dt) {
-//     // 1. 计算线速度和角速度 (差速模型正运动学)
-//     float v = (right_vel + left_vel) / 2.0f;
-//     float w = (right_vel - left_vel) / wheel_separation_;
-
-//     // 2. 航位推算积分
-//     double delta_x = v * cos(theta_) * dt;
-//     double delta_y = v * sin(theta_) * dt;
-//     double delta_theta = w * dt;
-
-//     x_ += delta_x;
-//     y_ += delta_y;
-//     theta_ += delta_theta;
-
-//     // 3. 填充位置信息
-//     odom_msg_.pose.pose.position.x = x_;
-//     odom_msg_.pose.pose.position.y = y_;
-    
-//     // 4. 将 Yaw 角转换为四元数 (仅绕 Z 轴旋转)
-//     odom_msg_.pose.pose.orientation.z = sin(theta_ / 2.0);
-//     odom_msg_.pose.pose.orientation.w = cos(theta_ / 2.0);
-
-//     // 5. 填充当前速度信息
-//     odom_msg_.twist.twist.linear.x = v;
-//     odom_msg_.twist.twist.angular.z = w;
-// }
-
 void DataConverter::updateOdometry(float left_vel, float right_vel, float dt) {
     if (dt <= 0) return;
 

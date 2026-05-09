@@ -70,22 +70,6 @@ void Motors::setTargetSpeeds(double leftMS, double rightMS) {
     targetSpeedR = rightMS;
 }
 
-// void Motors::driveMotor(int pin1, int pin2, double pwm) {
-//     int speed = constrain(abs((int)pwm), 0, 255);
-//     // 死区补偿：如果速度非常小则停止电机，防止电机发出“滋滋”声
-//     if (abs(pwm) < 1.0) {
-//         analogWrite(pin1, 0);
-//         analogWrite(pin2, 0);
-//     } else if (pwm > 0) {
-//         analogWrite(pin1, speed);
-//         analogWrite(pin2, 0);
-//     } else {
-//         analogWrite(pin1, 0);
-//         analogWrite(pin2, speed);
-//     }
-// }
-
-
 void Motors::driveMotor(int pin1, int pin2, double pwm) {
     int minPWM = 30; // 这里的 30 是补偿量
     int speed = constrain(abs((int)pwm), 0, 255);

@@ -16,8 +16,8 @@ void Motors::begin() {
     // Kp, Ki, Kd 参数：200.0, 1000.0, 1.0 (根据经验设定，建议实际调节)
     // pidLeft = new PID(&currentSpeedL, &outputL, &targetSpeedL, 200.0, 1000.0, 1.0, DIRECT);
     // pidRight = new PID(&currentSpeedR, &outputR, &targetSpeedR, 200.0, 1000.0, 1.0, DIRECT);
-    pidLeft = new PID(&currentSpeedL, &outputL, &targetSpeedL, 125, 1500, 0.5, DIRECT);
-    pidRight = new PID(&currentSpeedR, &outputR, &targetSpeedR, 125, 1500, 0.5, DIRECT);
+    pidLeft = new PID(&currentSpeedL, &outputL, &targetSpeedL, PID_KP, PID_KI, PID_KD, DIRECT);
+    pidRight = new PID(&currentSpeedR, &outputR, &targetSpeedR, PID_KP, PID_KI, PID_KD, DIRECT);
 
     pidLeft->SetMode(AUTOMATIC);
     pidLeft->SetOutputLimits(-255, 255);

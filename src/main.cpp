@@ -56,6 +56,7 @@ DataConverter converter(WHEEL_SEPARATION, WHEEL_RADIUS);
 //创建电机控制实体
 // Motors motors;
 const double Motors::TICKS_PER_METER= 6542.0; 
+const double Motors::PID_KP=125,Motors::PID_KI=1500,Motors::PID_KD=0.5;
 const uint8_t Motors::L_ENC_A= 35, Motors::L_ENC_B = 32, Motors::L_IN1 = 26, Motors::L_IN2 = 27; // 左轮引脚
 const uint8_t Motors::R_ENC_A = 34, Motors::R_ENC_B = 39, Motors::R_IN1 = 25, Motors::R_IN2 = 33; // 右轮引脚
 // 创建雷达管理实例
@@ -180,6 +181,7 @@ void setup()
 
     //初始化电机控制器（配置引脚、创建对象、启动PID）
     // motors.begin();
+    // Motors::getInstance(); // This line was redundant as the next line calls begin() on the same instance.
     Motors::getInstance().begin();
     Serial.println("Robot Motors Initialized...");
     Serial.println("[SYSTEM] All Initialized OK.");

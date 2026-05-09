@@ -5,12 +5,10 @@
 #include <Encoder.h>
 #include <PID_v1.h>
 
-
-
 // const double Motors::TICKS_PER_METER= 6542.0; 
 // const uint8_t Motors::L_ENC_A= 35, Motors::L_ENC_B = 32, Motors::L_IN1 = 26, Motors::L_IN2 = 27; // 左轮引脚
 // const uint8_t Motors::R_ENC_A = 34, Motors::R_ENC_B = 39, Motors::R_IN1 = 25, Motors::R_IN2 = 33; // 右轮引脚
-
+// const double Motors::PID_KP=125,Motors::PID_KI=1500,Motors::PID_KD=0.5;
 
 class Motors {
 public:
@@ -25,6 +23,8 @@ public:
     static const uint8_t L_ENC_A, L_ENC_B, L_IN1, L_IN2;
     static const uint8_t R_ENC_A, R_ENC_B, R_IN1, R_IN2;
     // static const uint8_t L_ENC_A = 32, L_ENC_B = 35, L_IN1 = 27, L_IN2 = 26;
+
+    static const double PID_KP,PID_KI,PID_KD;
 
     // Motors();结合下面构造函数放私有，可以让类只有一个实体
     static Motors& getInstance() {

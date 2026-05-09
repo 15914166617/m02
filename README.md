@@ -22,5 +22,5 @@ ros2 launch kaiaai_bringup b6.launch.py robot_model:=makerspet_loki map:=$HOME/m
 日记
 1.0     结构重构完成
 1.1     需要把必要的可设置参数拎出来
-
+1.2     问题：后续可以优化，系统保活如果重启，他只是启动了下位机，上位机要重启吗？后续再考虑，目前基础包活已经可以了。
 

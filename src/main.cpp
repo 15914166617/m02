@@ -75,7 +75,7 @@ void error_loop() {
         delay(100);
     }
 }
-//订阅回调函数，接受下发的线速度和角速度，变成左右轮子的pid目标速度
+//订阅回调函数，接受下发的线速度和角速度，变成左右轮子的pid目标速度 的
 void cmd_vel_callback(const void * msin) {
     const geometry_msgs__msg__Twist * msg = (const geometry_msgs__msg__Twist *)msin;
     float v = msg->linear.x;

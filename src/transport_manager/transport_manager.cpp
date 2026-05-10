@@ -2,12 +2,12 @@
 #include <WiFi.h>
 
 // 静态成员变量定义
-const char* TransportManager::SSID       = "zrc";
-const char* TransportManager::PASSWORD   = "z15914166617";
-const char* TransportManager::AGENT_IP   = "192.168.0.103";
-const uint16_t TransportManager::AGENT_PORT = 8888;
+// const char* TransportManager::SSID       = "zrc";
+// const char* TransportManager::PASSWORD   = "z15914166617";
+// const char* TransportManager::AGENT_IP   = "192.168.0.103";
+// const uint16_t TransportManager::AGENT_PORT = 8888;
 
-bool TransportManager::init(uint32_t timeout_ms) {
+bool TransportManager::init() {
     Serial.begin(115200);
     Serial.println("\n[Transport] Starting initialization...");
 
@@ -29,7 +29,7 @@ bool TransportManager::init(uint32_t timeout_ms) {
 
     // 等待 WiFi 连接的逻辑检查
     uint32_t start_time = millis();
-    while (WiFi.status() != WL_CONNECTED && (millis() - start_time) < timeout_ms) {
+    while (WiFi.status() != WL_CONNECTED && (millis() - start_time) < TIMEOUT_MS) {
         delay(500);
         Serial.print(".");
     }

@@ -4,6 +4,8 @@
 #include <Arduino.h>
 #include <sensor_msgs/msg/laser_scan.h>
 
+//内部有这2个控制引脚，但是我不知道他们是有有生效。
+//15  19脚其实我的电机没有
 /**
  * @class LidarManager
  * @brief 高可用自主雷达协议解析引擎
@@ -56,8 +58,8 @@ private:
     bool validateDataIntegrity();
     void initScanMsg(const char* frame_id);
     
-    const uint8_t LIDAR_PWM_PIN = 15;
-    const uint8_t LIDAR_EN_PIN = 19;
+    const uint8_t LIDAR_PWM_PIN = 17;
+    // const uint8_t LIDAR_EN_PIN = 19;
 };
 
 #endif

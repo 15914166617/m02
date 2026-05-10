@@ -16,8 +16,8 @@ void Motors::begin() {
     // Kp, Ki, Kd 参数：200.0, 1000.0, 1.0 (根据经验设定，建议实际调节)
     // pidLeft = new PID(&currentSpeedL, &outputL, &targetSpeedL, 200.0, 1000.0, 1.0, DIRECT);
     // pidRight = new PID(&currentSpeedR, &outputR, &targetSpeedR, 200.0, 1000.0, 1.0, DIRECT);
-    pidLeft = new PID(&currentSpeedL, &outputL, &targetSpeedL, 125, 1500, 0.5, DIRECT);
-    pidRight = new PID(&currentSpeedR, &outputR, &targetSpeedR, 125, 1500, 0.5, DIRECT);
+    pidLeft = new PID(&currentSpeedL, &outputL, &targetSpeedL, PID_KP, PID_KI, PID_KD, DIRECT);
+    pidRight = new PID(&currentSpeedR, &outputR, &targetSpeedR, PID_KP, PID_KI, PID_KD, DIRECT);
 
     pidLeft->SetMode(AUTOMATIC);
     pidLeft->SetOutputLimits(-255, 255);
@@ -69,22 +69,6 @@ void Motors::setTargetSpeeds(double leftMS, double rightMS) {
     targetSpeedL = leftMS;
     targetSpeedR = rightMS;
 }
-
-// void Motors::driveMotor(int pin1, int pin2, double pwm) {
-//     int speed = constrain(abs((int)pwm), 0, 255);
-//     // 死区补偿：如果速度非常小则停止电机，防止电机发出“滋滋”声
-//     if (abs(pwm) < 1.0) {
-//         analogWrite(pin1, 0);
-//         analogWrite(pin2, 0);
-//     } else if (pwm > 0) {
-//         analogWrite(pin1, speed);
-//         analogWrite(pin2, 0);
-//     } else {
-//         analogWrite(pin1, 0);
-//         analogWrite(pin2, speed);
-//     }
-// }
-
 
 void Motors::driveMotor(int pin1, int pin2, double pwm) {
     int minPWM = 30; // 这里的 30 是补偿量

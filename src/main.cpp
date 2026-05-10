@@ -130,7 +130,9 @@ void setup()
     //雷达串口设置，物理链路加固：显式配置 GPIO 模式，排除浮空干扰，强制 RX 引脚为上拉状态，防止悬空产生随机噪声;雷达串口初始化：预留充足的稳定时间，设置缓存大小;串口大小设置需要先设置大小再启动begin
     pinMode(16, INPUT_PULLUP); 
     Serial2.setRxBufferSize(2048);
-    Serial2.begin(115200, SERIAL_8N1, 16, 17);
+    // Serial2.begin(115200, SERIAL_8N1, 16, 17);
+    // 将 TX 设置为 -1，表示不启用发送引脚
+    Serial2.begin(115200, SERIAL_8N1, 16, -1);
     
     Serial.println("\n[SYSTEM] Lidar_Serial_02_Init_OK...");
     delay(1000); 

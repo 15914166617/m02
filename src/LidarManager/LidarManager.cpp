@@ -8,14 +8,18 @@ LidarManager::LidarManager() {
 LidarManager::~LidarManager() {}
 
 void LidarManager::begin(const char* frame_id) {
-    // 硬件赋能：激活 X3 Pro 的电源管理引脚
-    pinMode(LIDAR_EN_PIN, OUTPUT);
-    digitalWrite(LIDAR_EN_PIN, HIGH);
+    // 电机调速优化：X3 Pro 在 210 左右通常能达到 8Hz 左右的扫描频率
 
-    // 电机调速优化：X3 Pro 在 210 左右通常能达到 12Hz 左右的扫描频率
-    ledcSetup(0, 10000, 8); 
+    // 1. 设置 PWM 通道、频率和分辨率
+    // 通道: 0, 频率: 20000Hz (20kHz), 分辨率: 8位 (0-255)
+    ledcSetup(0, 20000, 8); 
+
+    // 2. 将引脚绑定到通道
     ledcAttachPin(LIDAR_PWM_PIN, 0);
-    ledcWrite(0, 210); 
+
+    // 3. 设定初始占空比以达到 8Hz
+    // 注意：8Hz 的具体数值需根据硬件调整，建议先从 160 (约 63%) 开始测试
+    ledcWrite(0, 160);
 
     initScanMsg(frame_id);
     Serial.println("[LidarManager] X3 Pro Protocol Handshake: SUCCESS. Reliability: 100%");

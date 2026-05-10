@@ -30,19 +30,21 @@ rclc_support_t support;
 rcl_allocator_t allocator;
 rcl_node_t node;
 
-//订阅者
+//订阅者cmdvel
 rcl_subscription_t cmd_sub;
 geometry_msgs__msg__Twist msg_cmd;
+
 //发布者odom
 rcl_publisher_t odom_pub;
+
 //发布者scan
-unsigned long last_scan_pub_time = 0;
 rcl_publisher_t scan_pub;
+unsigned long last_scan_pub_time = 0;
+
 //设置loop_ping保活的超时时间
-float ping_prev_pub_time_us = 0;
 // 推荐：1秒 (1,000,000微秒) 
 #define UROS_PING_PUB_PERIOD_US (2000 * 1000)//2s
-const int MAX_RETRIES = 9;  // 设置为 8 次（约 2*8=16 秒）
+const int MAX_RETRIES = 9;  // 设置为 8 次（约 2*9=18 秒）
 
 
 //里程计pub发送的计时
@@ -94,8 +96,8 @@ void cmd_vel_callback(const void * msin) {
 //保活函数
 void loop_ping() {
     static int retry_count = 0; 
-    // const int MAX_RETRIES = 15;  // 设置为 15 次（约 45 秒），给上位机充足的启动时间
-    
+    static float ping_prev_pub_time_us = 0;
+
     unsigned long time_now_us = esp_timer_get_time();
     
     if (time_now_us - ping_prev_pub_time_us >= UROS_PING_PUB_PERIOD_US) { 

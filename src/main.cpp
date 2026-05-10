@@ -36,33 +36,29 @@ geometry_msgs__msg__Twist msg_cmd;
 
 //发布者odom
 rcl_publisher_t odom_pub;
+//里程计pub发送的计时
+const unsigned long ODOM_PUB_PERIOD_MS = 40; // 40ms 对应 25Hz，33ms 对应 30Hz
 
 //发布者scan
 rcl_publisher_t scan_pub;
-unsigned long last_scan_pub_time = 0;
 
-//设置loop_ping保活的超时时间
-// 推荐：1秒 (1,000,000微秒) 
+// 保活次数与时间计算设置，推荐：1秒 (1,000,000微秒) 
 #define UROS_PING_PUB_PERIOD_US (2000 * 1000)//2s
 const int MAX_RETRIES = 9;  // 设置为 8 次（约 2*9=18 秒）
-
-
-//里程计pub发送的计时
-unsigned long last_odom_pub_time = 0;
-const unsigned long ODOM_PUB_PERIOD_MS = 40; // 40ms 对应 25Hz，33ms 对应 30Hz
 
 //设置硬件与运动学参数(在订阅的cmdvel和里程计融合有用到)
 const float WHEEL_SEPARATION = 0.174; // 轮距 (m)
 const float WHEEL_RADIUS = 0.0325;    // 轮半径 (m)
-//数据融合实体
+//数据融合初始化
 DataConverter converter(WHEEL_SEPARATION, WHEEL_RADIUS);
-//创建电机控制实体
-// Motors motors;
+
+//电机参数，霍尔减速比，pid参数，电机的控制与霍尔引脚配置
 const double Motors::TICKS_PER_METER= 6542.0; 
 const double Motors::PID_KP=125,Motors::PID_KI=1500,Motors::PID_KD=0.5;
 const uint8_t Motors::L_ENC_A= 35, Motors::L_ENC_B = 32, Motors::L_IN1 = 26, Motors::L_IN2 = 27; // 左轮引脚
 const uint8_t Motors::R_ENC_A = 34, Motors::R_ENC_B = 39, Motors::R_IN1 = 25, Motors::R_IN2 = 33; // 右轮引脚
-// 创建雷达管理实例
+
+// 创建雷达实体
 LidarManager lidar;
 
 //wifi 帐号 密码 运行agent的机器的ip 端口8888 连接超时ms
@@ -82,6 +78,8 @@ void error_loop() {
         delay(100);
     }
 }
+
+
 //订阅回调函数，接受下发的线速度和角速度，变成左右轮子的pid目标速度 的
 void cmd_vel_callback(const void * msin) {
     const geometry_msgs__msg__Twist * msg = (const geometry_msgs__msg__Twist *)msin;
@@ -89,7 +87,6 @@ void cmd_vel_callback(const void * msin) {
     float w = msg->angular.z;
     float left = v - (w * WHEEL_SEPARATION / 2.0f);
     float right = v + (w * WHEEL_SEPARATION / 2.0f);
-    // motors.setTargetSpeeds(left, right);
     Motors::getInstance().setTargetSpeeds(left, right);
 }
 
@@ -210,6 +207,8 @@ rclc_executor_spin_some(&executor, RCL_MS_TO_NS(1));
 double dt = Motors::getInstance().update();
 
 //Odom:出现有效增量,更新里程计内部位姿计算（必须每次都算，保证物理位置不丢失）    
+static long last_odom_pub_time = 0;
+
 if (dt > 0) {
         // 更新里程计内部位姿计算（必须每次都算，保证物理位置不丢失）
         converter.updateOdometry(Motors::getInstance().getLeftSpeed(), Motors::getInstance().getRightSpeed(), (float)dt);
@@ -245,10 +244,11 @@ if (dt > 0) {
     }
 
 //优先处理雷达串口数据，防止缓冲区溢出
+static unsigned long last_scan_pub_time = 0;
+
 lidar.update();
     if (lidar.isScanReady()) 
     {
-        // static unsigned long last_scan_pub_time = 0;
         //雷达数据发布频率控制
         if (millis() - last_scan_pub_time >= 150) { // 限制在约 6.6Hz
             last_scan_pub_time = millis();

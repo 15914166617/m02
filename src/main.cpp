@@ -56,7 +56,8 @@ DataConverter converter(WHEEL_SEPARATION, WHEEL_RADIUS);
 const double Motors::TICKS_PER_METER= 6542.0; 
 const double Motors::PID_KP=125,Motors::PID_KI=1500,Motors::PID_KD=0.5;
 const uint8_t Motors::L_ENC_A= 35, Motors::L_ENC_B = 32, Motors::L_IN1 = 26, Motors::L_IN2 = 27; // 左轮引脚
-const uint8_t Motors::R_ENC_A = 34, Motors::R_ENC_B = 39, Motors::R_IN1 = 25, Motors::R_IN2 = 33; // 右轮引脚
+// const uint8_t Motors::R_ENC_A = 34, Motors::R_ENC_B = 39, Motors::R_IN1 = 25, Motors::R_IN2 = 33; // 右轮引脚
+const uint8_t Motors::R_ENC_A = 34, Motors::R_ENC_B = 39, Motors::R_IN1 = 21, Motors::R_IN2 = 22; // 右轮引脚
 
 // 创建雷达实体
 LidarManager lidar;
